@@ -1,6 +1,8 @@
 #include "main.h"
 #include "display/lv_themes/lv_theme_night.h"
 #include "display/lv_themes/lv_theme_night.c"
+//these are the variables that will hold the speed of a
+//motor and print it for auton recorder
 int LeftDriveFrontSpeed;	            //first motor
 int LeftDriveBackSpeed;          //third motor
 int LeftIntakeSpeed;           //second motor
@@ -9,27 +11,30 @@ int RightDriveBackSpeed;		      //sixth motor
 int RightIntakeSpeed;         //fifth motor
 int DropperSpeed;               //seventh motor
 int FourBarSpeed;
+
+//thee are the 3 variables of time used in the
+//auton recorder
 int timeOld;
 int timeNew;
 int deltaTime;
 
-ADIUltrasonic backSonar('G', 'H');
-ADIButton LeftDriveButton('G');
-ADIButton RightDriveButton('H');
+///////////////////initialize all sensors here/////////////////////////////////
+ADIUltrasonic backSonar('E', 'F');						//sonar sensor
+ADIButton LeftDriveButton('G');								//buttons under the base
+ADIButton RightDriveButton('H');							//buttons under the base
 
 
 Controller controller;               // Joystick to read analog values for tank or arcade control.
-// Master controller by
 
-ControllerButton rightUp = controller[ControllerDigital::R1];                   //lift up right arm
-ControllerButton rightDown = controller[ControllerDigital::R2];                 //put down right arm
-ControllerButton leftUp = controller[ControllerDigital::L1];                    //lift up left arm
-ControllerButton leftDown = controller[ControllerDigital::L2];                  //put down left arm
+ControllerButton rightUp = controller[ControllerDigital::R1];
+ControllerButton rightDown = controller[ControllerDigital::R2];
+ControllerButton leftUp = controller[ControllerDigital::L1];
+ControllerButton leftDown = controller[ControllerDigital::L2];
 
 ControllerButton btnDown = controller[ControllerDigital::down];
-ControllerButton btnUp = controller[ControllerDigital::up];                     //brakes
-ControllerButton btnRight = controller[ControllerDigital::right];               //stop intake
-ControllerButton btnLeft = controller[ControllerDigital::left];                 //reverse drive
+ControllerButton btnUp = controller[ControllerDigital::up];
+ControllerButton btnRight = controller[ControllerDigital::right];
+ControllerButton btnLeft = controller[ControllerDigital::left];
 ControllerButton btnA = controller[ControllerDigital::A];
 ControllerButton btnB = controller[ControllerDigital::B];
 ControllerButton btnX = controller[ControllerDigital::X];
@@ -39,7 +44,6 @@ float leftY = controller.getAnalog(ControllerAnalog::leftY);
 float leftX = controller.getAnalog(ControllerAnalog::leftX);
 float rightY = controller.getAnalog(ControllerAnalog::rightY);
 float rightX = controller.getAnalog(ControllerAnalog::rightX);
-
 
 MotorGroup left = {LeftDriveFront, LeftDriveBack};
 MotorGroup right = {RightDriveFront, RightDriveBack};
@@ -57,7 +61,7 @@ bool bringLiftBack = false;
 bool hasTrayDropped = false;
 bool isRecording = false;
 
-float dropperMax = 1400;
+float dropperMax = 1300;
 float dropperError;
 int dropperTargetSpeed;
 int d_N = 90;
@@ -130,8 +134,24 @@ lv_obj_t * hubTab;
 lv_obj_t * textTab;
 lv_obj_t * visionTab;
 
+void resetDrive(){
+	left.tarePosition();
+	right.tarePosition();
+}
 
+void leftTime(int dist){
+	resetDrive();
+	while(abs(left.getPosition())<abs(dist)-3){
+		pros::delay(10);
+	}
+}
 
+void rightTime(int dist){
+	resetDrive();
+	while(abs(right.getPosition())<abs(dist)){
+		pros::delay(10);
+	}
+}
 /**
  * A callback function for LLEMU's center button.
  *
@@ -184,7 +204,7 @@ void disabled() {}
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
  * Management System or the VEX Competition Switch. This is intended for
- * competition-specific initialization routines, such as an autonomous selector
+ * competition-specific initialization routines, su ch as an autonomous selector
  * on the LCD.
  *
  * This task will exit when the robot is enabled and autonomous or opcontrol
@@ -203,29 +223,98 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
+ void bluUnprotected(){
+	 drive.setBrakeMode(AbstractMotor::brakeMode(0));
+	 intake(-200);
+	 FourBar.moveAbsolute(-1200, 200);
+	 pros::delay(350);
+	 intake(0);
+	 pros::delay(1750);
+	 FourBar.moveAbsolute(15, 200);
+	 pros::delay(1100);
 
-void autonomous() {
+	 intake(200);
+
+	 drive.setMaxVelocity(70);
+	 drive.moveDistance(1200);
+	 pros::delay(700);
+	 intake(20);
+	 Dropper.moveAbsolute(1500, 200);
+	 drive.moveDistance(-950);
+
+drive.turnAngle(-240);
+bool leftCheck = false;
+bool rightCheck = false;
+while(!leftCheck || !rightCheck){
+	if(!LeftDriveButton.isPressed() && !leftCheck){
+		left.moveVelocity(150);
+	}else{
+			leftCheck = false;
+			left.moveVelocity(0);
+	}
+	if(!RightDriveButton.isPressed() && !rightCheck){
+		right.moveVelocity(160);
+	}else{
+			right.moveVelocity(0);
+			rightCheck = true;
+	}
+
+}
+Dropper.moveAbsolute(1770, 120);
+pros::delay(1200);
+
+intake(-30);
+drive.setMaxVelocity(-70);
+drive.moveDistance(-200);
+
+ }
+void redUnprotected(){
 	drive.setBrakeMode(AbstractMotor::brakeMode(0));
-	intake(-100);
-FourBar.moveAbsolute(-1200, 200);
-pros::delay(200);
-intake(0);
-pros::delay(1500);
-FourBar.moveAbsolute(0, 200);
-pros::delay(1500);
+	intake(-200);
+	FourBar.moveAbsolute(-1200, 200);
+	pros::delay(350);
+	intake(0);
+	pros::delay(1750);
+	FourBar.moveAbsolute(15, 200);
+	pros::delay(1100);
 
-intake(200);
+	intake(200);
 
-drive.setMaxVelocity(90);
-drive.moveDistance(550);
+	drive.setMaxVelocity(70);
+	drive.moveDistance(1200);
+	pros::delay(700);
+	intake(20);
+	Dropper.moveAbsolute(1500, 200);
+	drive.moveDistance(-950);
 
+drive.turnAngle(240);
+bool leftCheck = false;
+bool rightCheck = false;
+while(!leftCheck || !rightCheck){
+ if(!LeftDriveButton.isPressed() && !leftCheck){
+	 left.moveVelocity(160);
+ }else{
+		 leftCheck = false;
+		 left.moveVelocity(0);
+ }
+ if(!RightDriveButton.isPressed() && !rightCheck){
+	 right.moveVelocity(150);
+ }else{
+		 right.moveVelocity(0);
+		 rightCheck = true;
+ }
 
-left.moveRelative(545,200);
-right.moveRelative(545,70);
+}
+Dropper.moveAbsolute(1770, 120);
+pros::delay(1200);
 
-pros::delay(2000);
+intake(-30);
+drive.setMaxVelocity(-70);
+drive.moveDistance(-200);
 
-intake(0);
+}
+void autonomous() {
+redUnprotected();
 }
 
 /**
@@ -350,13 +439,17 @@ void opcontrol() {
 		if(rightUp.isPressed() && rightDown.isPressed()){
 
 		}else if(!btnA.isPressed()){
-			if(rightUp.changedToPressed() && !getReadyToDrop){					//4-Bar up
+			if(btnUp.changedToPressed() && !getReadyToDrop){					//4-Bar up
 			LeftIntake.tarePosition();
 			RightIntake.tarePosition();
 			timeOld = pros::millis();
 			timeNew = pros::millis();
 			deltaTime = timeNew - timeOld;
 			 while(FourBar.getPosition()>-1225 && deltaTime<5000){
+				 leftY = controller.getAnalog(ControllerAnalog::leftY);
+				 leftX = controller.getAnalog(ControllerAnalog::leftX);
+				 rightY = controller.getAnalog(ControllerAnalog::rightY);
+				 rightX = controller.getAnalog(ControllerAnalog::rightX);
 				 FourBar.moveVelocity(-200);
 				 drive.arcade(leftY, rightX, .07); //Normal Drive code
 				 pros::delay(50);
@@ -364,7 +457,11 @@ void opcontrol() {
 			 }
 			 FourBar.moveVelocity(0);
 
-		 }else if(rightDown.changedToPressed()){
+		 }else if(btnDown.changedToPressed()){
+			 leftY = controller.getAnalog(ControllerAnalog::leftY);
+			 leftX = controller.getAnalog(ControllerAnalog::leftX);
+			 rightY = controller.getAnalog(ControllerAnalog::rightY);
+			 rightX = controller.getAnalog(ControllerAnalog::rightX);
 			 timeOld = pros::millis();
 			 timeNew = pros::millis();
 			 deltaTime = timeNew - timeOld;
@@ -379,6 +476,10 @@ void opcontrol() {
 				FourBar.moveVelocity(0);
 			}else{
 				while(FourBar.getPosition()<-960 && deltaTime<5000){
+					leftY = controller.getAnalog(ControllerAnalog::leftY);
+					leftX = controller.getAnalog(ControllerAnalog::leftX);
+					rightY = controller.getAnalog(ControllerAnalog::rightY);
+					rightX = controller.getAnalog(ControllerAnalog::rightX);
 					FourBar.moveVelocity(200);
 					drive.arcade(leftY, rightX, .07); //Normal Drive code
 					pros::delay(50);
@@ -387,10 +488,10 @@ void opcontrol() {
 				}
 				FourBar.moveVelocity(0);
 			}
-			}else if(btnUp.isPressed()){
-	 		 FourBar.moveVelocity(-50);
-	 	 }else if(btnDown.isPressed()){
-	 		 FourBar.moveVelocity(100);
+		}else if(rightUp.isPressed()){
+	 		 FourBar.moveVelocity(-150);
+	 	 }else if(rightDown.isPressed()){
+	 		 FourBar.moveVelocity(150);
 	 	 }else{
 	 		 FourBar.moveVelocity(0);
 	 	 }
@@ -438,12 +539,12 @@ void opcontrol() {
 	 if(btnA.isPressed()){							//ENTER DROPPER MODE
 		 if(rightUp.isPressed()){					//Dropper up
 			 try{
-			 dropperTargetSpeed = (int)((1.0/(1.0 + d_m*std::pow(e,((-1.0*dropperError)/d_d))))*(200-d_N)+d_N);
+			 // dropperTargetSpeed = (int)((1.0/(1.0 + d_m*std::pow(e,((-1.0*dropperError)/d_d))))*(200-d_N)+d_N);
+			 dropperTargetSpeed = (Dropper.getPosition()<1300? 200: (Dropper.getPosition()<1550? 120: 50));
 			 }catch(std::exception e){
 				 text(2, e.what());
-			 dropperTargetSpeed=30;
+			 dropperTargetSpeed=10;
 			 }
-			 Dropper.moveVelocity(dropperTargetSpeed);
 			 // Dropper.moveVelocity((((dropperMax-Dropper.getPosition())/dropperMax)*200)>50?(((3000-Dropper.getPosition())/2800)*200):50);
 			 Dropper.moveVelocity(dropperTargetSpeed);
 		 }else if(rightDown.isPressed()){//Dropper down
